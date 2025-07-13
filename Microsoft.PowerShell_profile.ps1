@@ -16,8 +16,6 @@ if (Test-Path $ompPath) {
     oh-my-posh init pwsh --config $ompPath | Invoke-Expression
 }
 
-Write-Host "🔧 PowerShell profile loaded from $PROFILE" -ForegroundColor Yellow
-
 # ---------------------------
 # Developer shortcuts
 # ---------------------------
