@@ -3,7 +3,7 @@
 # ===============================================================================
 
 # ---------------------------
-# Lazy load modules
+# oh-my-posh
 # ---------------------------
 if (Get-Command git -ErrorAction SilentlyContinue) {
     if (git rev-parse --is-inside-work-tree 2>$null) {
@@ -11,7 +11,7 @@ if (Get-Command git -ErrorAction SilentlyContinue) {
     }
 }
 
-$ompPath = Join-Path $env:LOCALAPPDATA "Programs\oh-my-posh\themes\tokyo.omp.json"
+$ompPath = Join-Path $env:LOCALAPPDATA "Programs\oh-my-posh\themes\anurag.json"
 if (Test-Path $ompPath) {
     oh-my-posh init pwsh --config $ompPath | Invoke-Expression
 }
@@ -21,18 +21,12 @@ if (Test-Path $ompPath) {
 # ---------------------------
 function gh     { param([string]$repo) Start-Process "https://github.com/$repo" }
 function mygh   { Start-Process "https://github.com/IAnuragMahapatra" }
-function so     { param([string]$q)   Start-Process "https://stackoverflow.com/search?q=$q" }
-function pwc    { Start-Process "https://paperswithcode.com/" }
 function o      { Start-Process explorer.exe "." }
 
 # ---------------------------
 # System & network info
 # ---------------------------
 function sysinfo { systeminfo | Select-String "^OS|^System|^Total Physical Memory" }
-function ip { 
-    $ip = Invoke-RestMethod "https://api.ipify.org"
-    Write-Host " 🌐Public IP: $ip" -ForegroundColor Green
-}
 function killport {
     param([int]$port)
     $conns = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
@@ -46,13 +40,6 @@ function killport {
     }
 }
 function ports { Get-NetTCPConnection | Select LocalAddress, LocalPort, State, OwningProcess | Sort LocalPort }
-
-# ---------------------------
-# ML & data science tools
-# ---------------------------
-function jup { jupyter lab }
-function tb  { tensorboard --logdir=logs }
-function mlf { mlflow ui }
 
 # ---------------------------
 # Docker & container tools
@@ -84,28 +71,70 @@ function gemini { Start-Process "https://aistudio.google.com/prompts/new_chat?mo
 # ---------------------------
 # Browsers & search
 # ---------------------------
-function chrome { Start-Process "chrome.exe" }
-function brave  { Start-Process "brave.exe" }
+Add-Type -AssemblyName System.Web
+
 function search {
-    param([string]$flag, [string]$query)
-    if ($flag -eq "-b" -and $query) {
-        Start-Process "brave.exe" "--new-window https://www.google.com/search?q=$query"
-    } elseif ($flag) {
-        Start-Process "https://www.google.com/search?q=$flag"
+    param (
+        [switch]$b,
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$query
+    )
+
+    $queryString = $query -join ' '
+
+    if ($queryString -match '^https?://') {
+        # If input starts with http:// or https://, treat as direct URL
+        $url = $queryString
+    }
+    else {
+        $encodedQuery = [System.Web.HttpUtility]::UrlEncode($queryString)
+        if ($encodedQuery) {
+            $url = "https://www.google.com/search?q=$encodedQuery"
+        } else {
+            $url = "https://www.google.com"
+        }
+    }
+
+    if ($b) {
+        Start-Process "brave.exe" $url
     } else {
-        Start-Process "https://www.google.com"
+        Start-Process "chrome.exe" "--profile-directory=Default", $url
     }
 }
+
 
 function yt {
-    param([string]$query)
-    if ($query) {
-        Start-Process "brave.exe" "--new-window https://www.youtube.com/results?search_query=$query"
-    } else {
-        Start-Process "brave.exe" "--new-window https://www.youtube.com"
-    }
-}
+    param (
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$query
+    )
 
+    if ($query) {
+        $rawQuery = $query -join ' '
+        $encodedQuery = [System.Web.HttpUtility]::UrlEncode($rawQuery)
+        $url = "https://www.youtube.com/results?search_query=$encodedQuery"
+    } else {
+        $url = "https://www.youtube.com"
+    }
+
+    Start-Process "brave.exe" $url
+}
+function play {
+    param (
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$query
+    )
+
+    if ($query) {
+        $joinedQuery = $query -join ' '
+        $encodedQuery = [System.Web.HttpUtility]::UrlEncode($joinedQuery)
+        $url = "https://open.spotify.com/search/$encodedQuery"
+    } else {
+        $url = "https://open.spotify.com/collection/tracks"
+    }
+
+    Start-Process "brave.exe" $url
+}
 # ---------------------------
 # Python & virtual environments
 # ---------------------------
@@ -122,17 +151,6 @@ function uvl { uv lock }
 function uvrn { param([string[]]$args) uv run @args }
 function uvp { param([string[]]$args) uv pip @args }
 function urm { param([string[]]$args) uv run mcp install @args }
-
-
-# ---------------------------
-# Kubernetes & cloud
-# ---------------------------
-function kctx   { param([string]$ctx) kubectl config use-context $ctx }
-function kgn    { kubectl get nodes }
-function kgp    { kubectl get pods }
-function awscli { param([string[]]$args) aws @args }
-function azcli  { param([string[]]$args) az @args }
-function gcloud { param([string[]]$args) gcloud @args }
 
 # ---------------------------
 # Editors & terminal helpers
@@ -182,15 +200,13 @@ Set-Alias utf8 chcp 65001
 # ---------------------------
 function hlp {
     Write-Host "🛠️  Tools & Shortcuts" -ForegroundColor Cyan
-    Write-Host " - GitHub:     gh, mygh, so, pwc, o"
+    Write-Host " - GitHub:     gh, mygh, o"
     Write-Host " - Sys:        sysinfo, ip, killport, ports"
-    Write-Host " - ML:         jup, tb, mlf"
     Write-Host " - Docker:     dcb, dcr, dcu, dcd, dki"
     Write-Host " - Git:        g,gst, gss, ga, cmt, push, pull, glog"
     Write-Host " - AI:         gpt, gemini"
-    Write-Host " - Browsers:   chrome, brave, search [-b query], yt"
+    Write-Host " - Browsers:   search [-b query], yt, play"
     Write-Host " - Python:     py, pipi, mkenv, av, dv, uvi, uva, uvr, uvs, uvl, uvrn, uvp, urm"
-    Write-Host " - K8s & Cloud:kctx, kgn, kgp, awscli, azcli, gcloud"
     Write-Host " - Editors:    code, vim, tmux"
     Write-Host " - Utils:      unzip, json, pingurl, reload"
     Write-Host " - Aliases:   c (clear), ll (ls -a), la (ls -aR), grep, top, .., np, utf8"
@@ -200,4 +216,6 @@ function hlp {
 # Welcome
 # ---------------------------
 Clear-Host
-Write-Host "🎐 Welcome back, $env:USERNAME! ($(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))" -ForegroundColor WHITE
+$timeStamp = Get-Date -Format 'dddd, MMMM dd, yyyy - HH:mm:ss'
+Write-Host "[+] User: $env:USERNAME" -ForegroundColor DarkYellow
+Write-Host "[+] Date: $timeStamp" -ForegroundColor DarkYellow
